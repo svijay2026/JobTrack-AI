@@ -8,21 +8,23 @@ JobTrack AI is a full-stack, AI-powered platform designed to streamline job hunt
 ## 🌟 Key Features
 
 - 🔐 **Secure Authentication & RBAC**: JWT-based access & refresh token lifecycle with bcrypt password hashing.
-- 📋 **Application Pipeline Tracking**: Track job applications through stages (Applied, Interviewing, Offered, Rejected).
-- 📄 **Smart Resume Parsing**: Extracts structured text and skills from PDF and DOCX files.
-- 🤖 **AI Match & Scoring Engine**: Compares resume contents with job descriptions to highlight match percentages and skill gaps.
+- 📄 **Smart Resume Parsing**: Extracts clean text, contact details (Email, Phone, LinkedIn, GitHub), education, and 200+ technical/domain skills from PDF and DOCX files.
+- 📋 **Application Pipeline Tracking**: Track job applications through Kanban stages (*Wishlist*, *Applied*, *Interviewing*, *Offered*, *Rejected*, *Accepted*, *Archived*).
+- 📊 **Pipeline Analytics & Funnel Metrics**: Real-time conversion tracking (interview rates, offer rates, application totals).
+- 🔍 **Search & Filtering**: Search applications by company, title, location, or filter by stage.
+- 🤖 **AI Match & Scoring Engine** *(Phase 4)*: Compares resume contents with job descriptions to highlight match percentages and skill gaps.
 - ⚡ **High-Performance API**: Built with FastAPI, SQLAlchemy ORM, and Pydantic v2 data validation.
-- 🧪 **Thoroughly Tested**: Unit and integration test coverage with Pytest.
+- 🧪 **Thoroughly Tested**: Comprehensive suite of 37 automated unit and integration tests with Pytest.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Backend**: Python 3.10+, FastAPI, Uvicorn, Pydantic v2, SQLAlchemy 2.0
-- **Security**: Passlib (Bcrypt), Python-Jose (JWT), Python-Multipart
-- **Document Parsing & Data**: PyPDF, Python-docx, Pandas
-- **Database**: MySQL / PostgreSQL / SQLite
-- **Testing**: Pytest, Pytest-asyncio, HTTPX
+- **Backend Framework**: Python 3.10+, FastAPI, Uvicorn, Pydantic v2, SQLAlchemy 2.0
+- **Security & Auth**: Passlib (Bcrypt), Python-Jose (JWT), Python-Multipart, OAuth2 Bearer Tokens
+- **Document Parsing & Extraction**: PyPDF, Python-docx, Regex Boundary Extractors
+- **Database & Persistence**: MySQL / PostgreSQL / SQLite
+- **Testing**: Pytest, Pytest-asyncio, HTTPX TestClient
 
 ---
 
@@ -32,37 +34,94 @@ JobTrack AI is a full-stack, AI-powered platform designed to streamline job hunt
 Job_Track_AI/
 ├── app/
 │   ├── api/
+│   │   ├── deps.py                  # OAuth2 authentication & DB session dependencies
 │   │   └── v1/
 │   │       ├── endpoints/
 │   │       │   ├── auth.py          # Register, Login, Refresh, Me endpoints
-│   │       │   └── health.py        # System and DB health check
+│   │       │   ├── health.py        # System and DB health check
+│   │       │   ├── resumes.py       # Resume Upload, Download, Parser, Primary selector
+│   │       │   └── jobs.py          # Job Application CRUD, Kanban status transitions & Stats
 │   │       └── api_router.py        # Central v1 API router
 │   ├── core/
-│   │   ├── nlp/                     # NLP & AI matching modules
-│   │   └── security.py              # JWT token and password hashing utilities
+│   │   ├── nlp/                     # NLP & AI matching algorithms (Phase 4)
+│   │   └── security.py              # JWT token handling and Bcrypt password hashing
 │   ├── crud/
-│   │   └── crud_user.py             # User database operations
+│   │   ├── crud_user.py             # User DB operations
+│   │   ├── crud_resume.py           # Resume DB operations & disk cleanup
+│   │   └── crud_job.py              # Job Application DB operations & analytics
 │   ├── db/
-│   │   ├── base.py                  # Declarative base
-│   │   └── session.py               # SQLAlchemy database session setup
+│   │   ├── base.py                  # SQLAlchemy DeclarativeBase
+│   │   └── session.py               # Database engine & connection pooling setup
 │   ├── models/
-│   │   └── user.py                  # User SQLAlchemy database model
+│   │   ├── user.py                  # User SQLAlchemy model
+│   │   ├── resume.py                # Resume SQLAlchemy model
+│   │   └── job.py                   # JobApplication SQLAlchemy model
 │   ├── schemas/
-│   │   ├── token.py                 # JWT token schemas
-│   │   └── user.py                  # User request/response schemas
-│   ├── services/                    # Business logic & parsing services
-│   ├── config.py                    # App configuration & settings
+│   │   ├── token.py                 # JWT token request/response schemas
+│   │   ├── user.py                  # User schemas
+│   │   ├── resume.py                # Resume upload & parsed data schemas
+│   │   └── job.py                   # Job application, status update & analytics schemas
+│   ├── services/
+│   │   ├── file_service.py          # Secure upload validation, storage & deletion
+│   │   └── resume_parser.py         # Multi-format PDF/DOCX parser & skill extractor
+│   ├── config.py                    # App configuration & environment settings
 │   └── main.py                      # FastAPI application entry point
 ├── tests/
-│   ├── unit/                        # Unit tests (e.g. security utils)
-│   ├── integration/                 # Integration tests (e.g. auth API, health check)
-│   └── conftest.py                  # Pytest fixtures & test DB setup
-├── .env.example                     # Environment template
+│   ├── conftest.py                  # Pytest fixtures & isolated SQLite test DB
+│   ├── unit/
+│   │   ├── test_security.py         # Password hashing & JWT token verification tests
+│   │   ├── test_file_service.py     # Upload sanitization & size limit tests
+│   │   └── test_resume_parser.py    # Text, contact, education, skill extraction tests
+│   └── integration/
+│       ├── test_health.py           # Health check endpoint tests
+│       ├── test_auth_api.py         # User registration, login, token refresh flows
+│       ├── test_resumes_api.py      # Resume upload, retrieval, download, delete flows
+│       └── test_jobs_api.py         # Job creation, filtering, status patch & stats flows
+├── .env.example                     # Environment configuration template
 ├── .gitignore                       # Git ignore rules
 ├── pytest.ini                       # Pytest configuration
 ├── requirements.txt                 # Production dependencies
 └── requirements-dev.txt             # Development & testing dependencies
 ```
+
+---
+
+## 📡 API Endpoints Overview
+
+### 🔐 Authentication (`/api/v1/auth`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/auth/register` | Register a new candidate account |
+| `POST` | `/api/v1/auth/login` | Authenticate user and receive JWT access token |
+| `POST` | `/api/v1/auth/refresh` | Refresh expired access tokens |
+| `GET` | `/api/v1/auth/me` | Retrieve profile of the currently logged-in user |
+
+### 📄 Resumes (`/api/v1/resumes`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/resumes/upload` | Upload PDF/DOCX resume & run automated parsing |
+| `GET` | `/api/v1/resumes/` | List all resumes uploaded by the current user |
+| `GET` | `/api/v1/resumes/primary` | Get the user's primary active resume |
+| `GET` | `/api/v1/resumes/{id}` | Get detailed metadata and parsed skills of a resume |
+| `GET` | `/api/v1/resumes/{id}/download` | Download raw original resume file |
+| `PUT` | `/api/v1/resumes/{id}/primary` | Designate a resume as primary |
+| `DELETE` | `/api/v1/resumes/{id}` | Delete resume record and remove file from storage |
+
+### 📋 Job Applications (`/api/v1/jobs`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/jobs/` | Create a new job application (optional resume link) |
+| `GET` | `/api/v1/jobs/` | List applications (with `status` filter, `search` keyword, pagination) |
+| `GET` | `/api/v1/jobs/stats` | Pipeline conversion statistics & stage counts |
+| `GET` | `/api/v1/jobs/{id}` | Get single job application details |
+| `PUT` | `/api/v1/jobs/{id}` | Full update of job application record |
+| `PATCH` | `/api/v1/jobs/{id}/status` | Kanban drag-and-drop quick stage transition |
+| `DELETE` | `/api/v1/jobs/{id}` | Remove job application from tracker |
+
+### 🏥 System Health (`/api/v1/health`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/health` | Health check & database connection status |
 
 ---
 
@@ -115,15 +174,16 @@ Execute the automated test suite with:
 ```bash
 pytest
 ```
+*Currently **37/37 tests passing** across unit and integration suites.*
 
 ---
 
 ## 🗺️ Roadmap
 
 - [x] **Phase 1**: Base Architecture, Database Configuration & JWT Authentication System.
-- [x] **Phase 2**: Resume Upload & Parsing Engine (PDF/DOCX extraction).
-- [x] **Phase 3**: Job Application Management & Pipeline Tracking (CRUD + Status updates).
-- [ ] **Phase 4**: AI Resume-to-Job Matching & Keyword Analysis.
+- [x] **Phase 2**: Resume Upload & Parsing Engine (PDF/DOCX extraction & skill matching).
+- [x] **Phase 3**: Job Application Management & Pipeline Tracking (Kanban statuses, search & analytics).
+- [ ] **Phase 4**: AI Resume-to-Job Matching & Keyword Analysis Engine.
 - [ ] **Phase 5**: Web Frontend Dashboard & Cloud Deployment.
 
 ---

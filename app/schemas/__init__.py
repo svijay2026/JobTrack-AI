@@ -10,6 +10,16 @@ from app.schemas.resume import (
     ContactInfo,
     EducationItem,
 )
+from app.schemas.job import (
+    JobStatus,
+    JobType,
+    JobApplicationBase,
+    JobApplicationCreate,
+    JobApplicationUpdate,
+    JobApplicationStatusUpdate,
+    JobApplicationResponse,
+    JobStatsResponse,
+)
 
 __all__ = [
     "UserBase",
@@ -27,4 +37,12 @@ __all__ = [
     "ResumeResponse",
     "ContactInfo",
     "EducationItem",
+    "JobStatus",
+    "JobType",
+    "JobApplicationBase",
+    "JobApplicationCreate",
+    "JobApplicationUpdate",
+    "JobApplicationStatusUpdate",
+    "JobApplicationResponse",
+    "JobStatsResponse",
 ]

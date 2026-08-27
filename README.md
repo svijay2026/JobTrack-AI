@@ -122,7 +122,7 @@ pytest
 
 - [x] **Phase 1**: Base Architecture, Database Configuration & JWT Authentication System.
 - [x] **Phase 2**: Resume Upload & Parsing Engine (PDF/DOCX extraction).
-- [ ] **Phase 3**: Job Application Management & Pipeline Tracking (CRUD + Status updates).
+- [x] **Phase 3**: Job Application Management & Pipeline Tracking (CRUD + Status updates).
 - [ ] **Phase 4**: AI Resume-to-Job Matching & Keyword Analysis.
 - [ ] **Phase 5**: Web Frontend Dashboard & Cloud Deployment.
 

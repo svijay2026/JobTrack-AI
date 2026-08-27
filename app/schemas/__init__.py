@@ -20,6 +20,12 @@ from app.schemas.job import (
     JobApplicationResponse,
     JobStatsResponse,
 )
+from app.schemas.match import (
+    MatchRequest,
+    MatchScoreBreakdown,
+    MatchResultResponse,
+    MatchHistoryItem,
+)
 
 __all__ = [
     "UserBase",
@@ -45,4 +51,8 @@ __all__ = [
     "JobApplicationStatusUpdate",
     "JobApplicationResponse",
     "JobStatsResponse",
+    "MatchRequest",
+    "MatchScoreBreakdown",
+    "MatchResultResponse",
+    "MatchHistoryItem",
 ]

@@ -33,6 +33,7 @@ class Resume(Base):
     # Relationships
     user = relationship("User", back_populates="resumes")
     job_applications = relationship("JobApplication", back_populates="resume")
+    matches = relationship("MatchAnalysis", back_populates="resume", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Resume(id={self.id}, user_id={self.user_id}, file_name='{self.file_name}', is_primary={self.is_primary})>"

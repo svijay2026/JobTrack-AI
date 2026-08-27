@@ -36,6 +36,7 @@ class JobApplication(Base):
     # Relationships
     user = relationship("User", back_populates="job_applications")
     resume = relationship("Resume", back_populates="job_applications")
+    matches = relationship("MatchAnalysis", back_populates="job", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<JobApplication(id={self.id}, company='{self.company_name}', title='{self.job_title}', status='{self.status}')>"

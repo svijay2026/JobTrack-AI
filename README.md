@@ -90,6 +90,14 @@ Job_Track_AI/
 │       ├── test_resumes_api.py      # Resume upload, retrieval, download, delete flows
 │       ├── test_jobs_api.py         # Job creation, filtering, status patch & stats flows
 │       └── test_matching_api.py     # AI match evaluation, history & cross-user isolation tests
+├── frontend/                        # React + Vite web dashboard (Phase 5)
+│   ├── src/
+│   │   ├── components/              # Layout, Sidebar, ProtectedRoute
+│   │   ├── context/                 # AuthContext (JWT session management)
+│   │   ├── pages/                   # Login & Register pages
+│   │   └── services/                # Axios API client for all backend endpoints
+│   ├── vite.config.js               # Dev server with API proxy to FastAPI
+│   └── package.json
 ├── .env.example                     # Environment configuration template
 ├── .gitignore                       # Git ignore rules
 ├── pytest.ini                       # Pytest configuration
@@ -205,7 +213,7 @@ pytest
 - [x] **Phase 2**: Resume Upload & Parsing Engine (PDF/DOCX extraction & skill matching).
 - [x] **Phase 3**: Job Application Management & Pipeline Tracking (Kanban statuses, search & analytics).
 - [x] **Phase 4**: AI Resume-to-Job Matching & Keyword Analysis Engine.
-- [ ] **Phase 5**: Web Frontend Dashboard & Cloud Deployment.
+- [ ] **Phase 5**: Web Frontend Dashboard & Cloud Deployment *(in progress — auth, layout, API client scaffold added)*.
 
 ---
 

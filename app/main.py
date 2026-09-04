@@ -16,6 +16,12 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+from app.db.base import Base
+from app.db.session import engine
+
+# Auto-create database tables on startup
+Base.metadata.create_all(bind=engine)
+
 # Configure Cross-Origin Resource Sharing (CORS)
 app.add_middleware(
     CORSMiddleware,

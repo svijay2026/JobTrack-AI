@@ -1,4 +1,4 @@
-﻿from typing import List, Union
+from typing import List, Union
 from pydantic import AnyHttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -54,13 +54,24 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        """Construct the SQLAlchemy connection string for MySQL using PyMySQL driver."""
-        if self.SQLALCHEMY_DATABASE_URI:
-            return self.SQLALCHEMY_DATABASE_URI
-        return (
-            f"mysql+pymysql://{self.DB_USER}:{self.DB_PASSWORD}"
-            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
-        )
+        """Construct the SQLAlchemy connection string for database (MySQL/Postgres/SQLite)."""
+        import os
+        env_db_url = os.environ.get("DATABASE_URL") or self.SQLALCHEMY_DATABASE_URI
+        if env_db_url:
+            if env_db_url.startswith("postgres://"):
+                return env_db_url.replace("postgres://", "postgresql://", 1)
+            return env_db_url
+        
+        # Check if MySQL host is explicitly provided or custom
+        if self.DB_HOST and self.DB_HOST not in ["localhost", "127.0.0.1"]:
+            return (
+                f"mysql+pymysql://{self.DB_USER}:{self.DB_PASSWORD}"
+                f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
+            )
+        
+        # Default production/standalone persistent fallback
+        os.makedirs("uploads", exist_ok=True)
+        return "sqlite:///./uploads/jobtrack_ai.db"
 
 
 # Global settings instance

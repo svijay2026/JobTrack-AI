@@ -153,3 +153,27 @@ def test_match_cross_user_isolation(client: TestClient):
 
     # User 2 attempts to delete User 1's report
     assert client.delete(f"/api/v1/matching/{match_id}", headers=user2_headers).status_code == 404
+
+
+def test_generate_cover_letter_api(client: TestClient):
+    headers = create_auth_user(client, email="cover_letter_user@example.com")
+    resume_id = upload_candidate_resume(client, headers)
+
+    payload = {
+        "resume_id": resume_id,
+        "company_name": "Acme Software",
+        "job_title": "Full Stack Developer",
+        "job_description": "We need a Full Stack Developer with Python, FastAPI, and React skills.",
+        "tone": "enthusiastic",
+    }
+
+    response = client.post("/api/v1/matching/cover-letter", json=payload, headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["company_name"] == "Acme Software"
+    assert data["job_title"] == "Full Stack Developer"
+    assert "Acme Software" in data["cover_letter"]
+    assert "Full Stack Developer" in data["cover_letter"]
+    assert len(data["key_highlights"]) > 0
+

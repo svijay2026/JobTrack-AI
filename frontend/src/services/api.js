@@ -59,6 +59,7 @@ export const jobService = {
 /* ─── Matching ─── */
 export const matchService = {
   analyze: (data) => api.post('/matching/analyze', data),
+  coverLetter: (data) => api.post('/matching/cover-letter', data),
   history: (params) => api.get('/matching/history', { params }),
   get: (id) => api.get(`/matching/${id}`),
   delete: (id) => api.delete(`/matching/${id}`),

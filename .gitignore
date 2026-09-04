@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -20,6 +20,15 @@ htmlcov/
 # Project uploads
 uploads/
 !uploads/.gitkeep
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Node & Build
+node_modules/
+frontend/dist/
 
 # IDEs
 .vscode/

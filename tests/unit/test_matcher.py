@@ -73,3 +73,22 @@ def test_analyze_match_pipeline():
     assert "AWS" in result["missing_skills"]
     assert len(result["recommendations"]) > 0
     assert len(result["summary"]) > 0
+
+
+def test_generate_cover_letter():
+    candidate_skills = ["Python", "FastAPI", "React", "Docker"]
+    letter_data = matcher.generate_cover_letter(
+        candidate_skills=candidate_skills,
+        candidate_experience_years=4.0,
+        company_name="InnovateTech",
+        job_title="Senior Developer",
+        job_description="Looking for Senior Developer with Python and FastAPI experience.",
+        tone="professional",
+    )
+
+    assert letter_data["company_name"] == "InnovateTech"
+    assert letter_data["job_title"] == "Senior Developer"
+    assert "InnovateTech" in letter_data["cover_letter"]
+    assert "Senior Developer" in letter_data["cover_letter"]
+    assert len(letter_data["key_highlights"]) > 0
+

@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  LayoutDashboard, Kanban, FileText, Brain, History, LogOut, User
+  LayoutDashboard, Kanban, FileText, Brain, FileSpreadsheet, History, LogOut, User
 } from 'lucide-react';
 
 const navItems = [
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/kanban',    icon: <Kanban size={18} />,          label: 'Kanban Board' },
   { to: '/resumes',   icon: <FileText size={18} />,        label: 'Resumes' },
   { to: '/match',     icon: <Brain size={18} />,           label: 'AI Match' },
+  { to: '/cover-letter', icon: <FileSpreadsheet size={18} />, label: 'Cover Letter' },
   { to: '/history',   icon: <History size={18} />,         label: 'Match History' },
 ];
 

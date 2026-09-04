@@ -234,5 +234,57 @@ class ResumeJobMatcher:
             "summary": summary,
         }
 
+    def generate_cover_letter(
+        self,
+        candidate_skills: List[str],
+        candidate_experience_years: float,
+        company_name: str,
+        job_title: str,
+        job_description: str,
+        tone: str = "professional",
+    ) -> Dict[str, Any]:
+        """
+        Generates a tailored cover letter and key application highlights
+        synthesizing candidate skills and target job description requirements.
+        """
+        matching_skills, _, _ = self.compute_skill_overlap(candidate_skills, job_description)
+        top_skills = matching_skills[:4] if matching_skills else candidate_skills[:4]
+        skills_phrase = ", ".join(top_skills) if top_skills else "software engineering and modern technology frameworks"
+
+        exp_str = f"{candidate_experience_years:.1f} years" if candidate_experience_years > 0 else "extensive hands-on project"
+
+        if tone.lower() == "enthusiastic":
+            opening = f"I am thrilled to submit my application for the {job_title} role at {company_name}! Having followed {company_name}'s innovation in the industry, I am eager to bring my expertise in {skills_phrase} to your engineering team."
+            closing = f"I am extremely excited about the prospect of contributing to {company_name}'s mission. I look forward to discussing how my background and enthusiasm align with your team's goals."
+        elif tone.lower() == "concise":
+            opening = f"Please accept this application for the {job_title} position at {company_name}. With {exp_str} of experience specializing in {skills_phrase}, I am confident in my ability to deliver immediate value."
+            closing = f"Thank you for reviewing my application. I welcome the opportunity to discuss my qualifications for the {job_title} position further."
+        else: # professional
+            opening = f"I am writing to express my strong interest in the {job_title} position at {company_name}. With over {exp_str} of proven technical experience and demonstrated competency in {skills_phrase}, I am well-prepared to contribute effectively to your organization."
+            closing = f"Thank you for your time and consideration. I welcome the opportunity to interview and discuss how my technical expertise in {skills_phrase} can advance {company_name}'s objectives."
+
+        body = (
+            f"Throughout my career, I have focused on designing scalable solutions, driving clean code standards, "
+            f"and optimizing performance. My core competencies in {skills_phrase} directly align with the requirements "
+            f"outlined in your posting for the {job_title} role. I excel at bridging technical implementation with business outcomes, "
+            f"ensuring robust software architecture and efficient development lifecycles."
+        )
+
+        full_letter = f"Dear Hiring Manager,\n\n{opening}\n\n{body}\n\n{closing}\n\nSincerely,\nCandidate"
+
+        highlights = [
+            f"Core Skill Alignment: Strong background in {skills_phrase}",
+            f"Experience Depth: {exp_str} of hands-on technical execution",
+            f"Role Alignment: Direct match for {job_title} at {company_name}",
+        ]
+
+        return {
+            "company_name": company_name,
+            "job_title": job_title,
+            "tone": tone,
+            "cover_letter": full_letter,
+            "key_highlights": highlights,
+        }
+
 
 matcher = ResumeJobMatcher()

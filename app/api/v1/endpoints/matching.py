@@ -9,6 +9,8 @@ from app.crud.crud_match import match_crud
 from app.crud.crud_resume import resume_crud
 from app.models.user import User
 from app.schemas.match import (
+    CoverLetterRequest,
+    CoverLetterResponse,
     MatchHistoryItem,
     MatchRequest,
     MatchResultResponse,
@@ -157,3 +159,41 @@ def delete_match_report(
             detail=f"Match report with ID {match_id} not found.",
         )
     return {"message": "Match analysis report deleted successfully."}
+
+
+@router.post(
+    "/cover-letter",
+    response_model=CoverLetterResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate a tailored AI Cover Letter",
+)
+def generate_ai_cover_letter(
+    req: CoverLetterRequest,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """
+    Generates a personalized 3-paragraph cover letter tailored to a job posting
+    synthesizing the candidate's resume skills, experience, and targeted company.
+    """
+    if req.resume_id:
+        resume = resume_crud.get_by_id_and_user(db=db, id=req.resume_id, user_id=current_user.id)
+        if not resume:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Resume {req.resume_id} not found.")
+    else:
+        resume = resume_crud.get_primary(db=db, user_id=current_user.id)
+        if not resume:
+            user_resumes = resume_crud.get_multi_by_user(db=db, user_id=current_user.id, limit=1)
+            if not user_resumes:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please upload a resume first.")
+            resume = user_resumes[0]
+
+    letter_data = matcher.generate_cover_letter(
+        candidate_skills=resume.skills or [],
+        candidate_experience_years=resume.experience_years or 0.0,
+        company_name=req.company_name,
+        job_title=req.job_title,
+        job_description=req.job_description,
+        tone=req.tone or "professional",
+    )
+    return letter_data

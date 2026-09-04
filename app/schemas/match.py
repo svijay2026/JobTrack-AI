@@ -68,3 +68,22 @@ class MatchHistoryItem(BaseModel):
     job_title: Optional[str] = None
     match_score: float
     created_at: datetime
+
+
+class CoverLetterRequest(BaseModel):
+    """Schema for generating a tailored AI cover letter."""
+    resume_id: Optional[int] = Field(None, description="Optional resume ID. Defaults to primary resume.")
+    company_name: str = Field(..., description="Target company name.")
+    job_title: str = Field(..., description="Target job title.")
+    job_description: str = Field(..., description="Job posting text.")
+    tone: Optional[str] = Field("professional", description="Tone of cover letter: professional, enthusiastic, concise.")
+
+
+class CoverLetterResponse(BaseModel):
+    """Response schema containing the generated cover letter."""
+    company_name: str
+    job_title: str
+    tone: str
+    cover_letter: str
+    key_highlights: List[str] = Field(default_factory=list)
+

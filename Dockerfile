@@ -18,9 +18,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create uploads directory inside container
+RUN mkdir -p /app/uploads/resumes
+
 # Copy application source code
 COPY app /app/app
-COPY uploads /app/uploads
 
 # Expose port
 EXPOSE 8000

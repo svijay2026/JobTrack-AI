@@ -2,17 +2,19 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15-alpine
-    container_name: jobtrack_db
+    image: mysql:8.0
+    container_name: jobtrack_mysql_db
     restart: always
+    command: --default-authentication-plugin=mysql_native_password
     environment:
-      POSTGRES_USER: jobtrack_user
-      POSTGRES_PASSWORD: jobtrack_password
-      POSTGRES_DB: jobtrack_db
+      MYSQL_ROOT_PASSWORD: root_password_123
+      MYSQL_DATABASE: jobtrack_ai
+      MYSQL_USER: jobtrack_user
+      MYSQL_PASSWORD: jobtrack_password
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
 
   backend:
     build:
@@ -21,11 +23,15 @@ services:
     container_name: jobtrack_backend
     restart: always
     environment:
-      DATABASE_URL: postgresql://jobtrack_user:jobtrack_password@db:5432/jobtrack_db
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: jobtrack_user
+      DB_PASSWORD: jobtrack_password
+      DB_NAME: jobtrack_ai
+      SQLALCHEMY_DATABASE_URI: mysql+pymysql://jobtrack_user:jobtrack_password@db:3306/jobtrack_ai?charset=utf8mb4
       SECRET_KEY: ${SECRET_KEY:-super_secret_jwt_key_change_in_production_12345}
       ALGORITHM: HS256
-      ACCESS_TOKEN_EXPIRE_MINUTES: 30
-      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      ACCESS_TOKEN_EXPIRE_MINUTES: 1440
     ports:
       - "8000:8000"
     depends_on:
@@ -45,4 +51,4 @@ services:
       - backend
 
 volumes:
-  postgres_data:
+  mysql_data:

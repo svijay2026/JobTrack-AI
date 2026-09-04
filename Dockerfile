@@ -1,4 +1,12 @@
-# Base Python image
+# Stage 1: Build React Frontend
+FROM node:20-alpine AS frontend-builder
+WORKDIR /frontend
+COPY frontend/package*.json ./
+RUN npm ci || npm install
+COPY frontend/ .
+RUN npm run build
+
+# Stage 2: Base Python Application
 FROM python:3.11-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
@@ -20,6 +28,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Create uploads directory inside container
 RUN mkdir -p /app/uploads/resumes
+
+# Copy built frontend assets into container
+COPY --from=frontend-builder /frontend/dist /app/frontend/dist
 
 # Copy application source code
 COPY app /app/app

@@ -64,10 +64,14 @@ class Settings(BaseSettings):
             # Convert mysql:// (plain) to mysql+pymysql:// (SQLAlchemy compatible)
             if env_db_url.startswith("mysql://"):
                 env_db_url = env_db_url.replace("mysql://", "mysql+pymysql://", 1)
-            # Convert ?ssl-mode= (MySQL URI format) to &ssl_disabled=false (PyMySQL format)
-            if "ssl-mode=REQUIRED" in env_db_url:
-                env_db_url = env_db_url.replace("?ssl-mode=REQUIRED", "?charset=utf8mb4&ssl_disabled=False")
-                env_db_url = env_db_url.replace("&ssl-mode=REQUIRED", "&ssl_disabled=False")
+            # Strip unsupported ssl-mode query params from MySQL URL for PyMySQL compatibility
+            if "ssl-mode" in env_db_url:
+                import re
+                env_db_url = re.sub(r'[\?&]ssl-mode=[^&]+', '', env_db_url)
+                if "?" not in env_db_url and "/" in env_db_url.split("@")[-1]:
+                    env_db_url += "?charset=utf8mb4"
+                elif "charset=" not in env_db_url:
+                    env_db_url += "&charset=utf8mb4"
             return env_db_url
 
         # Check if MySQL host is explicitly provided or custom

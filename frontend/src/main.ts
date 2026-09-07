@@ -646,15 +646,15 @@ function authPage(mode: 'login' | 'register' = 'login') {
     <main class="auth-page">
       <section class="auth-card">
         <div class="brand auth-brand"><div class="brand-mark">JT</div><div><strong>JobTrack AI</strong><span>${mode === 'login' ? 'Sign in to continue' : 'Create your account'}</span></div></div>
-        ${state.message ? `<div class="notice">${escapeHtml(state.message)}</div>` : ''}
+        ${state.message ? `<div class="notice ${state.message.includes('success') ? 'success' : 'warn'}">${escapeHtml(state.message)}</div>` : ''}
         <form id="${mode}-form" class="form">
-          ${mode === 'register' ? '<input name="full_name" placeholder="Full name" required>' : ''}
+          ${mode === 'register' ? '<input name="full_name" placeholder="Full name (e.g. Alex Rivera)" required minlength="2">' : ''}
           <input name="email" type="email" placeholder="Email address" required>
-          <input name="password" type="password" placeholder="Password" required>
+          <input name="password" type="password" placeholder="Password (min. 8 characters)" required minlength="8">
           <button class="primary" type="submit">${mode === 'login' ? 'Sign in' : 'Create account'}</button>
-          <button class="secondary" type="button" data-action="demo-login">Preview with demo data</button>
+          <button class="secondary" type="button" data-action="demo-login">⚡ Explore with Demo Data</button>
         </form>
-        <button class="link-btn" data-auth-mode="${mode === 'login' ? 'register' : 'login'}">${mode === 'login' ? 'Create an account' : 'Back to sign in'}</button>
+        <button class="link-btn" data-auth-mode="${mode === 'login' ? 'register' : 'login'}">${mode === 'login' ? "Don't have an account? Create one" : 'Already have an account? Sign in'}</button>
       </section>
     </main>
   `;
@@ -678,8 +678,19 @@ async function login(event: SubmitEvent) {
     await refreshData();
     state.message = '';
     render();
-  } catch {
-    state.message = 'Sign in failed. Use demo preview or check your backend database.';
+  } catch (err: any) {
+    let msg = 'Sign in failed. Please check your email and password.';
+    try {
+      const parsed = JSON.parse(err.message);
+      if (typeof parsed.detail === 'string') {
+        msg = parsed.detail;
+      } else if (Array.isArray(parsed.detail)) {
+        msg = parsed.detail.map((d: any) => d.msg || d).join(', ');
+      }
+    } catch {
+      if (err.message && err.message.length < 150) msg = err.message;
+    }
+    state.message = msg;
     authPage('login');
   }
 }
@@ -693,10 +704,21 @@ async function register(event: SubmitEvent) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    state.message = 'Account created. Sign in to continue.';
+    state.message = 'Account created successfully! Please sign in.';
     authPage('login');
-  } catch {
-    state.message = 'Registration failed. Use demo preview or check your backend database.';
+  } catch (err: any) {
+    let msg = 'Registration failed. Please check your input.';
+    try {
+      const parsed = JSON.parse(err.message);
+      if (typeof parsed.detail === 'string') {
+        msg = parsed.detail;
+      } else if (Array.isArray(parsed.detail)) {
+        msg = parsed.detail.map((d: any) => d.msg || d).join(', ');
+      }
+    } catch {
+      if (err.message && err.message.length < 150) msg = err.message;
+    }
+    state.message = msg;
     authPage('register');
   }
 }

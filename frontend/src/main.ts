@@ -45,13 +45,13 @@ type MatchResult = {
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const statuses = ['wishlist', 'applied', 'interviewing', 'offered', 'rejected', 'accepted', 'archived'];
 const statusLabels: Record<string, string> = {
-  wishlist: 'Wishlist',
-  applied: 'Applied',
-  interviewing: 'Interviewing',
-  offered: 'Offered',
-  rejected: 'Rejected',
-  accepted: 'Accepted',
-  archived: 'Archived',
+  wishlist: '🎯 Wishlist',
+  applied: '📨 Applied',
+  interviewing: '💬 Interviewing',
+  offered: '🎉 Offered',
+  rejected: '❌ Rejected',
+  accepted: '🏆 Accepted',
+  archived: '📁 Archived',
 };
 
 const demoJobs: Job[] = [
@@ -315,11 +315,28 @@ async function generateCoverLetter() {
 
 function copyCoverLetterToClipboard() {
   const textarea = document.querySelector<HTMLTextAreaElement>('#cover-letter-text');
+  const btn = document.querySelector<HTMLButtonElement>('[data-action="copy-cover-letter"]');
   if (textarea) {
     textarea.select();
     navigator.clipboard.writeText(textarea.value);
+    if (btn) {
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = '✅ Copied to Clipboard!';
+      btn.style.background = '#dcfce7';
+      btn.style.color = '#15803d';
+      btn.style.borderColor = '#86efac';
+      btn.style.transform = 'scale(1.04)';
+      setTimeout(() => {
+        if (btn) {
+          btn.innerHTML = originalHtml;
+          btn.style.background = '';
+          btn.style.color = '';
+          btn.style.borderColor = '';
+          btn.style.transform = '';
+        }
+      }, 2200);
+    }
     state.message = 'Cover letter copied to clipboard!';
-    render();
   }
 }
 let eventsBound = false;
@@ -394,26 +411,31 @@ function demoLogin() {
   refreshData().then(render);
 }
 
-function navButton(view: string, label: string) {
-  return `<button class="nav-item ${state.view === view ? 'active' : ''}" data-view="${view}">${label}</button>`;
+function navButton(view: string, label: string, icon: string = '') {
+  return `
+    <button class="nav-item ${state.view === view ? 'active' : ''}" data-view="${view}">
+      <span style="font-size:16px;">${icon}</span>
+      <span>${label}</span>
+    </button>
+  `;
 }
 
 function layout(content: string) {
   app.innerHTML = `
     <div class="shell">
       <aside class="sidebar">
-        <div class="brand"><div class="brand-mark">JT</div><div><strong>JobTrack AI</strong><span>Career command center</span></div></div>
+        <div class="brand"><div class="brand-mark">JT</div><div><strong>JobTrack AI</strong><span>Career Command Center</span></div></div>
         <nav>
-          ${navButton('dashboard', 'Dashboard')}
-          ${navButton('jobs', 'Jobs')}
-          ${navButton('kanban', 'Kanban Board')}
-          ${navButton('resumes', 'Resumes')}
-          ${navButton('match', 'AI Match')}
-          ${navButton('coverLetter', 'Cover Letter')}
-          ${navButton('history', 'Match History')}
+          ${navButton('dashboard', 'Dashboard', '📊')}
+          ${navButton('jobs', 'Applications', '💼')}
+          ${navButton('kanban', 'Kanban Board', '📋')}
+          ${navButton('resumes', 'Resumes', '📄')}
+          ${navButton('match', 'AI Matcher', '🤖')}
+          ${navButton('coverLetter', 'Cover Letter', '✍️')}
+          ${navButton('history', 'Match History', '🕒')}
         </nav>
         <div class="sidebar-user">
-          <span>${escapeHtml(state.user?.full_name || 'User')}</span>
+          <span>👤 ${escapeHtml(state.user?.full_name || 'User')}</span>
           <button class="ghost-btn" data-action="logout">Logout</button>
         </div>
       </aside>
@@ -429,19 +451,24 @@ function topbar(title: string, subtitle: string, action = '') {
       <div><h1>${title}</h1><p>${subtitle}</p></div>
       ${action}
     </div>
-    ${state.usingDemo ? '<div class="notice">Preview mode is showing demo records. Start the backend database to use saved live data.</div>' : ''}
-    ${state.message ? `<div class="notice success">${escapeHtml(state.message)}</div>` : ''}
+    ${state.usingDemo ? '<div class="notice">⚡ Preview mode is active with interactive demo records.</div>' : ''}
+    ${state.message ? `<div class="notice ${state.message.includes('fail') || state.message.includes('check') ? 'warn' : 'success'}">${escapeHtml(state.message)}</div>` : ''}
   `;
 }
 
-function stat(label: string, value: string | number) {
-  return `<article class="stat"><span>${label}</span><strong>${value}</strong></article>`;
+function stat(label: string, value: string | number, icon: string = '✨') {
+  return `
+    <article class="stat">
+      <span>${escapeHtml(label)} <span style="font-size:18px;">${icon}</span></span>
+      <strong>${escapeHtml(String(value))}</strong>
+    </article>
+  `;
 }
 
 function jobRow(job: Job, deletable = false) {
   return `
     <article class="row">
-      <div><strong>${escapeHtml(job.company_name)}</strong><span>${escapeHtml(job.job_title)} - ${escapeHtml(job.job_location || 'Location not set')}</span></div>
+      <div><strong>${escapeHtml(job.company_name)}</strong><span>${escapeHtml(job.job_title)} • ${escapeHtml(job.job_location || 'Location not set')}</span></div>
       <div class="row-actions">
         <span class="badge ${job.status}">${statusLabels[job.status] || job.status}</span>
         ${deletable ? `<button class="icon-btn danger" data-delete-job="${job.id}">Delete</button>` : ''}
@@ -459,10 +486,10 @@ function dashboard() {
   layout(`
     ${topbar('Dashboard', 'Application pipeline, resume readiness, and match activity.', state.jobs.length === 0 ? '<button class="secondary" data-action="load-sample-jobs">⚡ Load Sample Jobs</button>' : '')}
     <section class="stats">
-      ${stat('Applications', state.jobs.length)}
-      ${stat('Interview rate', `${interviewRate}%`)}
-      ${stat('Offer rate', `${offerRate}%`)}
-      ${stat('Resumes', state.resumes.length)}
+      ${stat('Applications', state.jobs.length, '💼')}
+      ${stat('Interview rate', `${interviewRate}%`, '💬')}
+      ${stat('Offer rate', `${offerRate}%`, '🎉')}
+      ${stat('Resumes', state.resumes.length, '📄')}
     </section>
     <section class="grid-two">
       <div class="panel">

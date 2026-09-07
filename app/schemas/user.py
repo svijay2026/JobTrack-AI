@@ -1,4 +1,4 @@
-﻿from typing import Optional
+from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
@@ -37,3 +37,10 @@ class UserRead(UserBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PasswordResetRequest(BaseModel):
+    """Schema for resetting user password."""
+    email: EmailStr
+    new_password: str = Field(..., min_length=8, max_length=128, description="New password (minimum 8 characters)")
+

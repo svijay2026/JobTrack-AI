@@ -641,25 +641,73 @@ async function deleteHistory(id: number) {
   render();
 }
 
-function authPage(mode: 'login' | 'register' = 'login') {
+function authPage(mode: 'login' | 'register' | 'forgot' = 'login') {
+  let title = 'Sign in to continue';
+  if (mode === 'register') title = 'Create your account';
+  if (mode === 'forgot') title = 'Reset your password';
+
   app.innerHTML = `
     <main class="auth-page">
       <section class="auth-card">
-        <div class="brand auth-brand"><div class="brand-mark">JT</div><div><strong>JobTrack AI</strong><span>${mode === 'login' ? 'Sign in to continue' : 'Create your account'}</span></div></div>
+        <div class="brand auth-brand"><div class="brand-mark">JT</div><div><strong>JobTrack AI</strong><span>${title}</span></div></div>
         ${state.message ? `<div class="notice ${state.message.includes('success') ? 'success' : 'warn'}">${escapeHtml(state.message)}</div>` : ''}
         <form id="${mode}-form" class="form">
           ${mode === 'register' ? '<input name="full_name" placeholder="Full name (e.g. Alex Rivera)" required minlength="2">' : ''}
           <input name="email" type="email" placeholder="Email address" required>
-          <input name="password" type="password" placeholder="Password (min. 8 characters)" required minlength="8">
-          <button class="primary" type="submit">${mode === 'login' ? 'Sign in' : 'Create account'}</button>
-          <button class="secondary" type="button" data-action="demo-login">⚡ Explore with Demo Data</button>
+          ${mode === 'forgot'
+            ? '<input name="new_password" type="password" placeholder="New password (min. 8 characters)" required minlength="8">'
+            : '<input name="password" type="password" placeholder="Password (min. 8 characters)" required minlength="8">'
+          }
+          ${mode === 'login' ? `
+            <div style="display:flex; justify-content:flex-end; margin-top:-6px; margin-bottom:8px;">
+              <button class="link-btn" type="button" data-auth-mode="forgot" style="font-size:13px; padding:0; background:none; border:none; color:var(--primary); cursor:pointer;">Forgot password?</button>
+            </div>
+          ` : ''}
+          <button class="primary" type="submit">
+            ${mode === 'login' ? 'Sign in' : mode === 'register' ? 'Create account' : 'Reset Password'}
+          </button>
+          ${mode !== 'forgot' ? '<button class="secondary" type="button" data-action="demo-login">⚡ Explore with Demo Data</button>' : ''}
         </form>
-        <button class="link-btn" data-auth-mode="${mode === 'login' ? 'register' : 'login'}">${mode === 'login' ? "Don't have an account? Create one" : 'Already have an account? Sign in'}</button>
+        ${mode === 'login'
+          ? '<button class="link-btn" data-auth-mode="register">Don\'t have an account? Create one</button>'
+          : '<button class="link-btn" data-auth-mode="login">Back to Sign in</button>'
+        }
       </section>
     </main>
   `;
-  document.querySelector<HTMLFormElement>(`#${mode}-form`)?.addEventListener('submit', mode === 'login' ? login : register);
+  const formEl = document.querySelector<HTMLFormElement>(`#${mode}-form`);
+  if (mode === 'login') formEl?.addEventListener('submit', login);
+  else if (mode === 'register') formEl?.addEventListener('submit', register);
+  else if (mode === 'forgot') formEl?.addEventListener('submit', resetPassword);
   bindGlobalEvents();
+}
+
+async function resetPassword(event: SubmitEvent) {
+  event.preventDefault();
+  const data = Object.fromEntries(new FormData(event.currentTarget as HTMLFormElement).entries());
+  try {
+    const res = await api('/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    state.message = res.message || 'Password reset successfully! Please sign in.';
+    authPage('login');
+  } catch (err: any) {
+    let msg = 'Password reset failed. Please check your email.';
+    try {
+      const parsed = JSON.parse(err.message);
+      if (typeof parsed.detail === 'string') {
+        msg = parsed.detail;
+      } else if (Array.isArray(parsed.detail)) {
+        msg = parsed.detail.map((d: any) => d.msg || d).join(', ');
+      }
+    } catch {
+      if (err.message && err.message.length < 150) msg = err.message;
+    }
+    state.message = msg;
+    authPage('forgot');
+  }
 }
 
 async function login(event: SubmitEvent) {
@@ -829,7 +877,7 @@ function handleClick(event: MouseEvent) {
   if (button.dataset.action === 'load-sample-jobs') loadSampleJobs();
   if (button.dataset.action === 'generate-cover-letter') generateCoverLetter();
   if (button.dataset.action === 'copy-cover-letter') copyCoverLetterToClipboard();
-  if (button.dataset.authMode) authPage(button.dataset.authMode as 'login' | 'register');
+  if (button.dataset.authMode) authPage(button.dataset.authMode as 'login' | 'register' | 'forgot');
   if (button.dataset.deleteJob) deleteJob(Number(button.dataset.deleteJob));
   if (button.dataset.primaryResume) setPrimaryResume(Number(button.dataset.primaryResume));
   if (button.dataset.deleteHistory) deleteHistory(Number(button.dataset.deleteHistory));

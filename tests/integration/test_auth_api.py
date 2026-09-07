@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from app.crud.crud_user import user_crud
@@ -136,3 +136,40 @@ def test_get_me_unauthorized_without_token(client: TestClient):
     """Test accessing /api/v1/auth/me without token returns 401 Unauthorized."""
     response = client.get("/api/v1/auth/me")
     assert response.status_code == 401
+
+
+def test_reset_password_success(client: TestClient, db_session: Session):
+    """Test resetting user password updates credentials successfully."""
+    user_in = UserCreate(
+        email="reset_me@example.com",
+        password="OldPassword123!",
+        full_name="Reset User",
+    )
+    user_crud.create(db_session, obj_in=user_in)
+
+    # 1. Reset password
+    res = client.post(
+        "/api/v1/auth/reset-password",
+        json={"email": "reset_me@example.com", "new_password": "NewSecretPassword123!"},
+    )
+    assert res.status_code == 200
+    assert "Password reset successfully" in res.json()["message"]
+
+    # 2. Verify login works with new password
+    login_res = client.post(
+        "/api/v1/auth/login",
+        data={"username": "reset_me@example.com", "password": "NewSecretPassword123!"},
+    )
+    assert login_res.status_code == 200
+    assert "access_token" in login_res.json()
+
+
+def test_reset_password_unknown_email_fails(client: TestClient):
+    """Test resetting password for non-existent email returns 404 Not Found."""
+    res = client.post(
+        "/api/v1/auth/reset-password",
+        json={"email": "nonexistent@example.com", "new_password": "NewSecretPassword123!"},
+    )
+    assert res.status_code == 404
+    assert "No account found" in res.json()["detail"]
+

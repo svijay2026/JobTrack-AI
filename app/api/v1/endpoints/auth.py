@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -7,7 +7,7 @@ from app.config import settings
 from app.core.security import create_access_token
 from app.crud.crud_user import user_crud
 from app.models.user import User
-from app.schemas.user import UserCreate, UserRead, UserLogin
+from app.schemas.user import UserCreate, UserRead, UserLogin, PasswordResetRequest
 from app.schemas.token import Token
 
 router = APIRouter()
@@ -128,3 +128,27 @@ def get_me(
     - Returns current user details.
     """
     return current_user
+
+
+@router.post(
+    "/reset-password",
+    status_code=status.HTTP_200_OK,
+    summary="Reset user password",
+    response_description="Returns confirmation message.",
+)
+def reset_password(
+    reset_in: PasswordResetRequest,
+    db: Session = Depends(deps.get_db),
+):
+    """
+    Resets the password for the specified email address.
+    """
+    user = user_crud.get_by_email(db, email=reset_in.email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with this email address.",
+        )
+    user_crud.update(db, db_obj=user, obj_in={"password": reset_in.new_password})
+    return {"message": "Password reset successfully. You can now sign in with your new password."}
+

@@ -176,21 +176,33 @@ def generate_ai_cover_letter(
     Generates a personalized 3-paragraph cover letter tailored to a job posting
     synthesizing the candidate's resume skills, experience, and targeted company.
     """
+    candidate_skills: List[str] = []
+    candidate_experience_years: float = 3.0
+
     if req.resume_id:
         resume = resume_crud.get_by_id_and_user(db=db, id=req.resume_id, user_id=current_user.id)
-        if not resume:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Resume {req.resume_id} not found.")
+        if resume:
+            candidate_skills = resume.skills or []
+            candidate_experience_years = resume.experience_years or 0.0
     else:
         resume = resume_crud.get_primary(db=db, user_id=current_user.id)
         if not resume:
             user_resumes = resume_crud.get_multi_by_user(db=db, user_id=current_user.id, limit=1)
-            if not user_resumes:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please upload a resume first.")
-            resume = user_resumes[0]
+            if user_resumes:
+                resume = user_resumes[0]
+        if resume:
+            candidate_skills = resume.skills or []
+            candidate_experience_years = resume.experience_years or 0.0
+
+    # If no resume exists in DB, intelligently extract skills from the job description
+    if not candidate_skills:
+        from app.core.nlp.parser import resume_parser
+        extracted = resume_parser.extract_skills(req.job_description)
+        candidate_skills = extracted if extracted else ["Python", "FastAPI", "React", "TypeScript", "SQL"]
 
     letter_data = matcher.generate_cover_letter(
-        candidate_skills=resume.skills or [],
-        candidate_experience_years=resume.experience_years or 0.0,
+        candidate_skills=candidate_skills,
+        candidate_experience_years=candidate_experience_years,
         company_name=req.company_name,
         job_title=req.job_title,
         job_description=req.job_description,

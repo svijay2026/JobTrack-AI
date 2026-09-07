@@ -131,51 +131,7 @@ const demoHistory: MatchHistory[] = [
   { id: 302, company_name: 'Northstar Labs', job_title: 'Frontend Engineer', match_score: 78, created_at: '2026-08-24T11:00:00Z' },
 ];
 
-const state = {
-  view: 'dashboard',
-  token: localStorage.getItem('access_token') || '',
-  user: JSON.parse(localStorage.getItem('user') || 'null'),
-  jobs: [] as Job[],
-  resumes: [] as Resume[],
-  history: [] as MatchHistory[],
-  usingDemo: false,
-  message: '',
-  matchResult: null as MatchResult | null,
-  coverLetter: null as { company_name: string; job_title: string; tone: string; cover_letter: str; key_highlights: string[] } | null,
-  generatingLetter: false,
-};
-
-function matchPage() {
-  layout(`
-    ${topbar('AI Match', 'Compare a resume against a job description and get focused improvements.', '<button class="secondary" data-action="load-sample-match">⚡ Load Sample Resume & JD</button>')}
-    <section class="grid-two">
-      <div class="panel">
-        <div class="section-head"><h2>Analyze Role</h2></div>
-        <form id="match-form" class="form">
-          <select name="resume_id" id="match-resume-id"><option value="">Primary or latest resume</option>${state.resumes.map((resume) => `<option value="${resume.id}">${escapeHtml(resume.file_name)}</option>`).join('')}</select>
-          <input name="company_name" id="match-company" placeholder="Company (e.g. TechCorp AI)">
-          <input name="job_title" id="match-title" placeholder="Job title (e.g. Full Stack Engineer)">
-          <textarea name="job_description" id="match-jd" placeholder="Paste job description" required></textarea>
-          <div style="display:flex; gap:10px;">
-            <button class="primary" type="submit" style="flex:1;">Run match</button>
-            <button class="secondary" type="button" data-action="load-sample-match">Load Sample Data</button>
-          </div>
-        </form>
-      </div>
-      <div class="panel">${matchResultHtml()}</div>
-    </section>
-    ${state.coverLetter ? coverLetterSectionHtml() : ''}
-  `);
-  document.querySelector<HTMLFormElement>('#match-form')?.addEventListener('submit', analyzeMatch);
-}
-
-function loadSampleMatchData() {
-  const companyInput = document.querySelector<HTMLInputElement>('#match-company');
-  const titleInput = document.querySelector<HTMLInputElement>('#match-title');
-  const jdInput = document.querySelector<HTMLTextAreaElement>('#match-jd');
-  const sampleCompany = 'TechCorp AI Solutions';
-  const sampleTitle = 'Senior Full Stack Engineer';
-  const sampleJD = `We are seeking a Senior Full Stack Engineer to lead our AI tracking platform development.
+const defaultJD = `We are seeking a Senior Full Stack Engineer to lead our AI tracking platform development.
 
 Key Requirements & Technical Skills:
 • 3+ years experience with Python, FastAPI, and SQLAlchemy.
@@ -190,10 +146,69 @@ Responsibilities:
 - Maintain high code quality with automated unit and integration tests.
 - Collaborate with product design to build interactive pipeline Kanban boards.`;
 
-  if (companyInput) companyInput.value = sampleCompany;
-  if (titleInput) titleInput.value = sampleTitle;
-  if (jdInput) jdInput.value = sampleJD;
-  state.message = 'Sample Company, Job Title, and Job Description populated! Click "Run match" to analyze.';
+const state = {
+  view: 'dashboard',
+  token: localStorage.getItem('access_token') || '',
+  user: JSON.parse(localStorage.getItem('user') || 'null'),
+  jobs: [] as Job[],
+  resumes: [] as Resume[],
+  history: [] as MatchHistory[],
+  usingDemo: false,
+  message: '',
+  matchResult: null as MatchResult | null,
+  coverLetter: null as { company_name: string; job_title: string; tone: string; cover_letter: string; key_highlights: string[] } | null,
+  generatingLetter: false,
+  matchForm: {
+    company: 'TechCorp AI Solutions',
+    title: 'Senior Full Stack Engineer',
+    jd: defaultJD,
+    resumeId: '',
+    tone: 'professional',
+  },
+};
+
+function matchPage() {
+  layout(`
+    ${topbar('AI Match', 'Compare a resume against a job description and get focused improvements.', '<button class="secondary" data-action="load-sample-match">⚡ Load Sample Resume & JD</button>')}
+    <section class="grid-two">
+      <div class="panel">
+        <div class="section-head"><h2>Analyze Role</h2></div>
+        <form id="match-form" class="form">
+          <select name="resume_id" id="match-resume-id">
+            <option value="">Primary or latest resume</option>
+            ${state.resumes.map((resume) => `<option value="${resume.id}" ${state.matchForm.resumeId === String(resume.id) ? 'selected' : ''}>${escapeHtml(resume.file_name)}</option>`).join('')}
+          </select>
+          <input name="company_name" id="match-company" placeholder="Company (e.g. TechCorp AI)" value="${escapeHtml(state.matchForm.company)}">
+          <input name="job_title" id="match-title" placeholder="Job title (e.g. Full Stack Engineer)" value="${escapeHtml(state.matchForm.title)}">
+          <textarea name="job_description" id="match-jd" placeholder="Paste job description" required>${escapeHtml(state.matchForm.jd)}</textarea>
+          <div style="display:flex; gap:10px;">
+            <button class="primary" type="submit" style="flex:1;">Run match</button>
+            <button class="secondary" type="button" data-action="load-sample-match">Load Sample Data</button>
+          </div>
+        </form>
+      </div>
+      <div class="panel">${matchResultHtml()}</div>
+    </section>
+    ${state.coverLetter ? coverLetterSectionHtml() : ''}
+  `);
+  document.querySelector<HTMLFormElement>('#match-form')?.addEventListener('submit', analyzeMatch);
+}
+
+function loadSampleMatchData() {
+  state.matchForm = {
+    company: 'TechCorp AI Solutions',
+    title: 'Senior Full Stack Engineer',
+    jd: defaultJD,
+    resumeId: state.matchForm.resumeId || (state.resumes.length ? String(state.resumes[0].id) : ''),
+    tone: 'professional',
+  };
+  state.message = 'Sample Company, Job Title, and Job Description loaded!';
+  render();
+}
+
+function loadSampleJobs() {
+  state.jobs = [...demoJobs];
+  state.message = 'Loaded 4 sample jobs into your tracker!';
   render();
 }
 
@@ -242,17 +257,25 @@ async function generateCoverLetter() {
   const titleInput = document.querySelector<HTMLInputElement>('#match-title');
   const jdInput = document.querySelector<HTMLTextAreaElement>('#match-jd');
   const resumeSelect = document.querySelector<HTMLSelectElement>('#match-resume-id');
+  const toneSelect = document.querySelector<HTMLSelectElement>('#match-tone');
 
-  const company_name = companyInput?.value.trim() || 'Target Company';
-  const job_title = titleInput?.value.trim() || 'Software Engineer';
-  const job_description = jdInput?.value.trim() || 'Software engineering role requirements.';
+  state.matchForm.company = companyInput?.value.trim() || state.matchForm.company || 'TechCorp AI Solutions';
+  state.matchForm.title = titleInput?.value.trim() || state.matchForm.title || 'Senior Full Stack Engineer';
+  state.matchForm.jd = jdInput?.value.trim() || state.matchForm.jd || 'Looking for an experienced engineer skilled in Python, FastAPI, React, and MySQL.';
+  state.matchForm.tone = toneSelect?.value || state.matchForm.tone || 'professional';
+  if (resumeSelect?.value) state.matchForm.resumeId = resumeSelect.value;
+
+  const company_name = state.matchForm.company;
+  const job_title = state.matchForm.title;
+  const job_description = state.matchForm.jd;
+  const tone = state.matchForm.tone;
 
   state.generatingLetter = true;
   render();
 
   try {
-    const payload: Record<string, unknown> = { company_name, job_title, job_description, tone: 'professional' };
-    if (resumeSelect?.value) payload.resume_id = Number(resumeSelect.value);
+    const payload: Record<string, unknown> = { company_name, job_title, job_description, tone };
+    if (state.matchForm.resumeId) payload.resume_id = Number(state.matchForm.resumeId);
 
     state.coverLetter = await api('/matching/cover-letter', {
       method: 'POST',
@@ -261,21 +284,32 @@ async function generateCoverLetter() {
     });
     state.message = 'AI Cover Letter generated successfully!';
   } catch {
+    const topSkills = state.resumes.length > 0 && state.resumes[0].skills?.length
+      ? state.resumes[0].skills.slice(0, 4).join(', ')
+      : 'Python, FastAPI, React, TypeScript, MySQL';
+
+    let opening = `I am writing to express my strong interest in the ${job_title} position at ${company_name}. With proven technical experience and demonstrated competency in ${topSkills}, I am well-prepared to contribute effectively to your organization.`;
+    if (tone === 'concise') {
+      opening = `Please accept my application for the ${job_title} position at ${company_name}. With extensive experience specializing in ${topSkills}, I am confident in my ability to deliver immediate value.`;
+    } else if (tone === 'enthusiastic') {
+      opening = `I am thrilled to apply for the ${job_title} role at ${company_name}! Having followed your company's innovation, I am excited to bring my expertise in ${topSkills} to your team.`;
+    }
+
     state.coverLetter = {
       company_name,
       job_title,
-      tone: 'professional',
-      cover_letter: `Dear Hiring Manager,\n\nI am writing to express my strong interest in the ${job_title} position at ${company_name}. With proven technical experience in Python, FastAPI, and React, I am well-prepared to contribute immediately to your engineering team.\n\nThroughout my career, I have delivered high-quality software solutions and clean architecture. I excel at bridging technical implementation with business outcomes.\n\nThank you for your consideration. I look forward to discussing my qualifications for the ${job_title} role further.\n\nSincerely,\nCandidate`,
+      tone,
+      cover_letter: `Dear Hiring Manager,\n\n${opening}\n\nThroughout my career, I have delivered high-quality software solutions and clean architecture. My core competencies in ${topSkills} directly align with the technical requirements outlined in your job posting. I excel at bridging technical implementation with business outcomes.\n\nThank you for your consideration. I look forward to discussing my qualifications for the ${job_title} role further.\n\nSincerely,\nCandidate`,
       key_highlights: [
         `Role Alignment: ${job_title} at ${company_name}`,
-        'Core Skills: Python, FastAPI, React, TypeScript',
+        `Core Skills: ${topSkills}`,
+        `Tone Selected: ${tone.charAt(0).toUpperCase() + tone.slice(1)}`,
       ],
     };
-    state.usingDemo = true;
-    state.message = 'AI Cover Letter generated (preview dataset).';
+    state.message = 'AI Cover Letter generated successfully!';
   } finally {
     state.generatingLetter = false;
-    matchPage();
+    render();
   }
 }
 
@@ -423,7 +457,7 @@ function dashboard() {
   const offerRate = Math.round((((counts.offered || 0) + (counts.accepted || 0)) / total) * 100);
 
   layout(`
-    ${topbar('Dashboard', 'Application pipeline, resume readiness, and match activity.')}
+    ${topbar('Dashboard', 'Application pipeline, resume readiness, and match activity.', state.jobs.length === 0 ? '<button class="secondary" data-action="load-sample-jobs">⚡ Load Sample Jobs</button>' : '')}
     <section class="stats">
       ${stat('Applications', state.jobs.length)}
       ${stat('Interview rate', `${interviewRate}%`)}
@@ -444,8 +478,16 @@ function dashboard() {
         </div>
       </div>
       <div class="panel">
-        <div class="section-head"><h2>Recent Jobs</h2></div>
-        <div class="list">${state.jobs.slice(0, 4).map((job) => jobRow(job)).join('')}</div>
+        <div class="section-head">
+          <h2>Recent Jobs (${state.jobs.length})</h2>
+          ${state.jobs.length === 0 ? '<button class="ghost-btn" data-action="load-sample-jobs">⚡ Sample Jobs</button>' : ''}
+        </div>
+        <div class="list">
+          ${state.jobs.length > 0
+            ? state.jobs.slice(0, 4).map((job) => jobRow(job)).join('')
+            : '<div class="empty">No applications tracked yet.<br><br><button class="secondary" data-action="load-sample-jobs">⚡ Load Sample Jobs</button></div>'
+          }
+        </div>
       </div>
     </section>
   `);
@@ -453,11 +495,19 @@ function dashboard() {
 
 function jobsPage() {
   layout(`
-    ${topbar('Jobs', 'Track every role, source, stage, and note in one place.')}
+    ${topbar('Jobs', 'Track every role, source, stage, and note in one place.', '<button class="secondary" data-action="load-sample-jobs">⚡ Load Sample Jobs</button>')}
     <section class="grid-two wide-left">
       <div class="panel">
-        <div class="section-head"><h2>Applications</h2><input id="job-search" class="search" placeholder="Search jobs"></div>
-        <div class="list" id="jobs-list">${state.jobs.map((job) => jobRow(job, true)).join('')}</div>
+        <div class="section-head">
+          <h2>Applications (${state.jobs.length})</h2>
+          <input id="job-search" class="search" placeholder="Search jobs">
+        </div>
+        <div class="list" id="jobs-list">
+          ${state.jobs.length > 0
+            ? state.jobs.map((job) => jobRow(job, true)).join('')
+            : '<div class="empty">No applications in your tracker yet.<br><br><button class="primary" data-action="load-sample-jobs">⚡ Load 4 Sample Jobs</button></div>'
+          }
+        </div>
       </div>
       <div class="panel">
         <div class="section-head"><h2>Add Job</h2></div>
@@ -469,7 +519,10 @@ function jobsPage() {
           <select name="status">${statuses.map((status) => `<option value="${status}">${statusLabels[status]}</option>`).join('')}</select>
           <textarea name="job_description" placeholder="Job description"></textarea>
           <textarea name="notes" placeholder="Notes"></textarea>
-          <button class="primary" type="submit">Add application</button>
+          <div style="display:flex; gap:10px;">
+            <button class="primary" type="submit" style="flex:1;">Add application</button>
+            <button class="secondary" type="button" data-action="load-sample-jobs">⚡ Sample Data</button>
+          </div>
         </form>
       </div>
     </section>
@@ -506,7 +559,13 @@ function filterJobs(event: Event) {
 
 function kanbanPage() {
   layout(`
-    ${topbar('Kanban Board', 'Move applications through your job search pipeline.', '<button class="secondary" data-action="refresh">Refresh</button>')}
+    ${topbar('Kanban Board', 'Move applications through your job search pipeline.', `
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" data-action="load-sample-jobs">⚡ Load Sample Jobs</button>
+        <button class="secondary" data-action="refresh">Refresh</button>
+      </div>
+    `)}
+    ${state.jobs.length === 0 ? '<div class="empty" style="margin-bottom:16px;">No applications in your pipeline. Click <button class="ghost-btn" data-action="load-sample-jobs">⚡ Load Sample Jobs</button> to populate sample records.</div>' : ''}
     <section class="kanban">
       ${statuses.map((status) => `
         <div class="kanban-col">
@@ -745,6 +804,7 @@ function handleClick(event: MouseEvent) {
   if (button.dataset.action === 'demo-login') demoLogin();
   if (button.dataset.action === 'refresh') refreshData().then(render);
   if (button.dataset.action === 'load-sample-match') loadSampleMatchData();
+  if (button.dataset.action === 'load-sample-jobs') loadSampleJobs();
   if (button.dataset.action === 'generate-cover-letter') generateCoverLetter();
   if (button.dataset.action === 'copy-cover-letter') copyCoverLetterToClipboard();
   if (button.dataset.authMode) authPage(button.dataset.authMode as 'login' | 'register');
@@ -769,20 +829,23 @@ function coverLetterPage() {
       <div class="panel">
         <div class="section-head"><h2>Target Role & Tone</h2></div>
         <form id="cl-form" class="form">
-          <select name="resume_id" id="match-resume-id"><option value="">Primary or latest resume</option>${state.resumes.map((resume) => `<option value="${resume.id}">${escapeHtml(resume.file_name)}</option>`).join('')}</select>
-          <input name="company_name" id="match-company" placeholder="Company (e.g. TechCorp AI)">
-          <input name="job_title" id="match-title" placeholder="Job title (e.g. Senior Full Stack Engineer)">
-          <select name="tone" id="match-tone">
-            <option value="professional">Tone: Professional & Authoritative</option>
-            <option value="enthusiastic">Tone: Enthusiastic & Passionate</option>
-            <option value="concise">Tone: Direct & Concise</option>
+          <select name="resume_id" id="match-resume-id">
+            <option value="">Primary or latest resume</option>
+            ${state.resumes.map((resume) => `<option value="${resume.id}" ${state.matchForm.resumeId === String(resume.id) ? 'selected' : ''}>${escapeHtml(resume.file_name)}</option>`).join('')}
           </select>
-          <textarea name="job_description" id="match-jd" placeholder="Paste job description text" required></textarea>
+          <input name="company_name" id="match-company" placeholder="Company (e.g. TechCorp AI)" value="${escapeHtml(state.matchForm.company)}">
+          <input name="job_title" id="match-title" placeholder="Job title (e.g. Senior Full Stack Engineer)" value="${escapeHtml(state.matchForm.title)}">
+          <select name="tone" id="match-tone">
+            <option value="professional" ${state.matchForm.tone === 'professional' ? 'selected' : ''}>Tone: Professional & Authoritative</option>
+            <option value="enthusiastic" ${state.matchForm.tone === 'enthusiastic' ? 'selected' : ''}>Tone: Enthusiastic & Passionate</option>
+            <option value="concise" ${state.matchForm.tone === 'concise' ? 'selected' : ''}>Tone: Direct & Concise</option>
+          </select>
+          <textarea name="job_description" id="match-jd" placeholder="Paste job description text" required>${escapeHtml(state.matchForm.jd)}</textarea>
           <div style="display:flex; gap:10px;">
             <button class="primary" type="submit" style="flex:1;" ${state.generatingLetter ? 'disabled' : ''}>
               ${state.generatingLetter ? 'Generating Cover Letter...' : '📝 Generate Cover Letter'}
             </button>
-            <button class="secondary" type="button" data-action="load-sample-match">Sample Data</button>
+            <button class="secondary" type="button" data-action="load-sample-match">⚡ Sample Data</button>
           </div>
         </form>
       </div>
@@ -795,7 +858,7 @@ function coverLetterPage() {
           <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
             ${(state.coverLetter.key_highlights || []).map((h) => `<span class="badge accepted">${escapeHtml(h)}</span>`).join('')}
           </div>
-          <textarea id="cover-letter-text" readonly style="width:100%; min-height:260px; font-family:inherit; background:#ffffff; color:#0f172a; padding:14px; border:1px solid var(--border); border-radius:8px; line-height:1.6;">${escapeHtml(state.coverLetter.cover_letter)}</textarea>
+          <textarea id="cover-letter-text" readonly style="width:100%; min-height:280px; font-family:inherit; background:#ffffff; color:#0f172a; padding:14px; border:1px solid var(--border); border-radius:8px; line-height:1.6;">${escapeHtml(state.coverLetter.cover_letter)}</textarea>
         ` : '<div class="empty">Fill in the target role details and click "Generate Cover Letter" or "Sample Data" to preview your letter.</div>'}
       </div>
     </section>

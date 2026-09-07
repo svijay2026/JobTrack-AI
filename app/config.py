@@ -58,17 +58,25 @@ class Settings(BaseSettings):
         import os
         env_db_url = os.environ.get("DATABASE_URL") or self.SQLALCHEMY_DATABASE_URI
         if env_db_url:
+            # Fix postgres:// legacy prefix
             if env_db_url.startswith("postgres://"):
                 return env_db_url.replace("postgres://", "postgresql://", 1)
+            # Convert mysql:// (plain) to mysql+pymysql:// (SQLAlchemy compatible)
+            if env_db_url.startswith("mysql://"):
+                env_db_url = env_db_url.replace("mysql://", "mysql+pymysql://", 1)
+            # Convert ?ssl-mode= (MySQL URI format) to &ssl_disabled=false (PyMySQL format)
+            if "ssl-mode=REQUIRED" in env_db_url:
+                env_db_url = env_db_url.replace("?ssl-mode=REQUIRED", "?charset=utf8mb4&ssl_disabled=False")
+                env_db_url = env_db_url.replace("&ssl-mode=REQUIRED", "&ssl_disabled=False")
             return env_db_url
-        
+
         # Check if MySQL host is explicitly provided or custom
         if self.DB_HOST and self.DB_HOST not in ["localhost", "127.0.0.1"]:
             return (
                 f"mysql+pymysql://{self.DB_USER}:{self.DB_PASSWORD}"
                 f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
             )
-        
+
         # Default production/standalone persistent fallback
         os.makedirs("uploads", exist_ok=True)
         return "sqlite:///./uploads/jobtrack_ai.db"

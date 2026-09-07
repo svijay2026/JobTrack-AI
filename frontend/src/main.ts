@@ -159,6 +159,19 @@ const state = {
   matchResult: null as MatchResult | null,
   coverLetter: null as { company_name: string; job_title: string; tone: string; cover_letter: string; key_highlights: string[] } | null,
   generatingLetter: false,
+  assistantLoading: false,
+  chatMessages: [
+    {
+      role: 'assistant' as const,
+      content: '👋 Hi! I am your JobTrack AI Career Assistant.\n\nI can help you with:\n• Resume review & Google XYZ bullet formula optimization.\n• Tailored technical & behavioral interview practice.\n• Active application pipeline strategy & follow-up plans.\n• Salary negotiation scripts & compensation tactics.\n\nAsk me anything or click a suggested prompt below to get started!',
+    },
+  ],
+  suggestedPrompts: [
+    'Analyze my current application pipeline',
+    'How can I improve my resume bullet points?',
+    'Practice technical interview questions for full-stack role',
+    'Tips and script for negotiating higher salary',
+  ],
   matchForm: {
     company: 'TechCorp AI Solutions',
     title: 'Senior Full Stack Engineer',
@@ -435,6 +448,7 @@ function layout(content: string) {
           ${navButton('match', 'AI Matcher', '🤖')}
           ${navButton('coverLetter', 'Cover Letter', '✍️')}
           ${navButton('history', 'Match History', '🕒')}
+          ${navButton('assistant', 'AI Assistant', '✨')}
         </nav>
         <div class="sidebar-user" style="display:flex; flex-direction:column; gap:10px; align-items:stretch;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -453,6 +467,7 @@ function layout(content: string) {
         </div>
       </aside>
       <main class="content">${content}</main>
+      <button class="floating-assistant-btn" data-view="assistant">✨ AI Assistant</button>
     </div>
   `;
   bindGlobalEvents();
@@ -900,8 +915,24 @@ function downloadResume(id: number) {
 
 function handleClick(event: MouseEvent) {
   const target = event.target as HTMLElement;
-  const button = target.closest<HTMLElement>('[data-view], [data-action], [data-auth-mode], [data-set-theme], [data-delete-job], [data-primary-resume], [data-delete-history], [data-delete-resume], [data-download-resume]');
+  const button = target.closest<HTMLElement>('[data-view], [data-action], [data-auth-mode], [data-set-theme], [data-prompt], [data-delete-job], [data-primary-resume], [data-delete-history], [data-delete-resume], [data-download-resume]');
   if (!button) return;
+
+  if (button.dataset.prompt) {
+    sendAssistantMessage(button.dataset.prompt);
+    return;
+  }
+
+  if (button.dataset.action === 'clear-chat') {
+    state.chatMessages = [
+      {
+        role: 'assistant',
+        content: 'Chat history cleared. What career or job search topic would you like to discuss?',
+      },
+    ];
+    render();
+    return;
+  }
 
   if (button.dataset.setTheme) {
     const t = button.dataset.setTheme;
@@ -989,6 +1020,106 @@ function coverLetterPage() {
   });
 }
 
+function assistantPage() {
+  layout(`
+    ${topbar('AI Career Assistant', 'Ask career advice, prepare for interviews, polish resume bullets, and strategize your pipeline.', '<button class="secondary" data-action="clear-chat">🗑️ Clear Chat</button>')}
+    <section class="panel" style="padding:0; overflow:hidden;">
+      <div class="chat-container">
+        <div class="chat-header">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div class="brand-mark" style="width:36px; height:36px; font-size:15px;">✨</div>
+            <div>
+              <strong style="font-size:15px; color:#0f172a; display:block;">Career Copilot AI</strong>
+              <small style="color:var(--muted); font-size:12px;">🟢 Online • Ready to coach on resumes, interviews & strategy</small>
+            </div>
+          </div>
+          <span class="badge accepted">AI Ready</span>
+        </div>
+        
+        <div class="chat-messages" id="chat-messages-container">
+          ${state.chatMessages.map((msg) => `
+            <div class="chat-msg ${msg.role}">
+              <div style="font-size:11px; font-weight:700; opacity:0.8; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.04em;">
+                ${msg.role === 'assistant' ? '✨ Career Copilot' : '👤 You'}
+              </div>
+              <div>${escapeHtml(msg.content)}</div>
+            </div>
+          `).join('')}
+          ${state.assistantLoading ? `
+            <div class="chat-msg assistant">
+              <div style="font-size:11px; font-weight:700; opacity:0.8; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.04em;">✨ Career Copilot</div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span>Analyzing background and generating advice...</span>
+                <span class="badge interviewing">Thinking</span>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="chat-chips-bar">
+          ${state.suggestedPrompts.map((p) => `
+            <button class="prompt-chip" data-prompt="${escapeHtml(p)}">${escapeHtml(p)}</button>
+          `).join('')}
+        </div>
+
+        <form id="chat-form" class="chat-input-row">
+          <input id="chat-input" placeholder="Ask anything (e.g. 'How should I answer tell me about yourself?')" autocomplete="off" required>
+          <button class="primary" type="submit" ${state.assistantLoading ? 'disabled' : ''}>
+            ${state.assistantLoading ? '...' : 'Send 🚀'}
+          </button>
+        </form>
+      </div>
+    </section>
+  `);
+
+  const container = document.querySelector<HTMLDivElement>('#chat-messages-container');
+  if (container) container.scrollTop = container.scrollHeight;
+
+  document.querySelector<HTMLFormElement>('#chat-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.querySelector<HTMLInputElement>('#chat-input');
+    if (input && input.value.trim()) {
+      const msg = input.value.trim();
+      input.value = '';
+      sendAssistantMessage(msg);
+    }
+  });
+}
+
+async function sendAssistantMessage(userText: string) {
+  state.chatMessages.push({ role: 'user', content: userText });
+  state.assistantLoading = true;
+  assistantPage();
+
+  try {
+    const res = await api('/assistant/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: userText,
+        history: state.chatMessages.slice(-6),
+      }),
+    });
+    state.chatMessages.push({ role: 'assistant', content: res.reply });
+    if (res.suggested_prompts && res.suggested_prompts.length > 0) {
+      state.suggestedPrompts = res.suggested_prompts;
+    }
+  } catch {
+    const topSkills = state.resumes.length > 0 && state.resumes[0].skills?.length
+      ? state.resumes[0].skills.slice(0, 4).join(', ')
+      : 'Python, FastAPI, React, MySQL';
+    const fallbackReply = `Here is tailored advice for your background in **${topSkills}**:\n\n• **Quantify Your Impact:** In technical interviews and resumes, frame accomplishments around latency reduction, architecture scalability, and test coverage.\n• **System Design Tip:** When discussing full-stack development, highlight how you isolate state in React and handle connection pooling with databases.\n• **Active Applications:** You currently have ${state.jobs.length} tracked jobs. Focus on consistent follow-ups and matching your skills with role requirements.`;
+    state.chatMessages.push({ role: 'assistant', content: fallbackReply });
+  } finally {
+    state.assistantLoading = false;
+    assistantPage();
+    setTimeout(() => {
+      const container = document.querySelector<HTMLDivElement>('#chat-messages-container');
+      if (container) container.scrollTop = container.scrollHeight;
+    }, 50);
+  }
+}
+
 function render() {
   if (!state.token) {
     authPage('login');
@@ -1002,6 +1133,7 @@ function render() {
     match: matchPage,
     coverLetter: coverLetterPage,
     history: historyPage,
+    assistant: assistantPage,
   };
   (pages[state.view] || dashboard)();
 }

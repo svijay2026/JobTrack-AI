@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import health, auth, resumes, jobs, matching
+from app.api.v1.endpoints import health, auth, resumes, jobs, matching, assistant
 
 api_router = APIRouter()
 
@@ -17,3 +17,6 @@ api_router.include_router(jobs.router, prefix="/jobs", tags=["Jobs"])
 
 # Mount AI matching and scoring endpoints
 api_router.include_router(matching.router, prefix="/matching", tags=["AI Matching"])
+
+# Mount AI Career Assistant endpoints
+api_router.include_router(assistant.router, prefix="/assistant", tags=["AI Assistant"])

@@ -150,6 +150,7 @@ const state = {
   view: 'dashboard',
   token: localStorage.getItem('access_token') || '',
   user: JSON.parse(localStorage.getItem('user') || 'null'),
+  theme: localStorage.getItem('app-theme') || 'indigo',
   jobs: [] as Job[],
   resumes: [] as Resume[],
   history: [] as MatchHistory[],
@@ -166,6 +167,7 @@ const state = {
     tone: 'professional',
   },
 };
+document.documentElement.setAttribute('data-theme', state.theme);
 
 function matchPage() {
   layout(`
@@ -434,9 +436,20 @@ function layout(content: string) {
           ${navButton('coverLetter', 'Cover Letter', '✍️')}
           ${navButton('history', 'Match History', '🕒')}
         </nav>
-        <div class="sidebar-user">
-          <span>👤 ${escapeHtml(state.user?.full_name || 'User')}</span>
-          <button class="ghost-btn" data-action="logout">Logout</button>
+        <div class="sidebar-user" style="display:flex; flex-direction:column; gap:10px; align-items:stretch;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span>👤 ${escapeHtml(state.user?.full_name || 'User')}</span>
+            <button class="ghost-btn" data-action="logout">Logout</button>
+          </div>
+          <div class="theme-switcher">
+            <span style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--muted); letter-spacing:0.04em;">Palette</span>
+            <div style="display:flex; gap:6px;">
+              <button class="theme-dot ${state.theme === 'indigo' ? 'active' : ''}" data-set-theme="indigo" title="Modern Indigo (Linear tech style)" style="background:#6366f1;"></button>
+              <button class="theme-dot ${state.theme === 'emerald' ? 'active' : ''}" data-set-theme="emerald" title="Emerald Growth (Vibrant Mint)" style="background:#059669;"></button>
+              <button class="theme-dot ${state.theme === 'royal' ? 'active' : ''}" data-set-theme="royal" title="Royal Executive (Stripe style)" style="background:#2563eb;"></button>
+              <button class="theme-dot ${state.theme === 'sunset' ? 'active' : ''}" data-set-theme="sunset" title="Sunset Amber (Warm Coral)" style="background:#ea580c;"></button>
+            </div>
+          </div>
         </div>
       </aside>
       <main class="content">${content}</main>
@@ -887,8 +900,18 @@ function downloadResume(id: number) {
 
 function handleClick(event: MouseEvent) {
   const target = event.target as HTMLElement;
-  const button = target.closest<HTMLElement>('[data-view], [data-action], [data-auth-mode], [data-delete-job], [data-primary-resume], [data-delete-history], [data-delete-resume], [data-download-resume]');
+  const button = target.closest<HTMLElement>('[data-view], [data-action], [data-auth-mode], [data-set-theme], [data-delete-job], [data-primary-resume], [data-delete-history], [data-delete-resume], [data-download-resume]');
   if (!button) return;
+
+  if (button.dataset.setTheme) {
+    const t = button.dataset.setTheme;
+    state.theme = t;
+    localStorage.setItem('app-theme', t);
+    document.documentElement.setAttribute('data-theme', t);
+    state.message = `Switched to ${t.charAt(0).toUpperCase() + t.slice(1)} theme!`;
+    render();
+    return;
+  }
 
   if (button.dataset.view) {
     state.view = button.dataset.view;
